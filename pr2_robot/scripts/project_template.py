@@ -50,6 +50,7 @@ def send_to_yaml(yaml_filename, dict_list):
 def pcl_callback(pcl_msg):
     # Define object array variables
     detected_objects_labels = []
+    detected_objects_centroids = {}
     detected_objects_list = []
 # Exercise-2 TODOs:
 
@@ -174,6 +175,12 @@ def pcl_callback(pcl_msg):
         label_pos[2] += .4
         object_markers_pub.publish(make_label(label,label_pos, index))
 
+        # Obtain centroid of detected objects
+        points_arr = pcl_cluser.to_array()
+        if label in detected_objects_centroids:
+            print "Found duplicated object! Overwriting object " + label
+        detected_objects_centroids[label] = np.mean(points_arr, axis=0)[:3]
+
         # Add the detected object to the list of detected objects.
         do = DetectedObject()
         do.label = label
@@ -183,6 +190,61 @@ def pcl_callback(pcl_msg):
 
     # Publish the list of detected objects
     detected_objects_pub.publish(detected_objects_list)
+
+    # Get object list params
+    object_list_param = rospy.get_param('/object_list')
+
+    # Get dropbox list params
+    dropbox = rospy.get_param('/dropbox')
+
+    dict_list = []
+    for i in range(0, len(object_list_param)):
+        # Populate various ROS messages
+        # test_scene_num
+        test_scene_num = Int32()
+        test_scene_num.data = int(rospy.get_param('test_scene_num'))
+
+        # arm_name
+        arm_name = String()
+        arm_name.data = dropbox[i]['name']
+
+        # object_name
+        object_name = String()
+        object_name.data = object_list_param[i]['name']
+
+        # pick_pose
+        pick_pose = Pose()
+        pick_pose.orientation.x = 0
+        pick_pose.orientation.y = 0
+        pick_pose.orientation.z = 0
+        pick_pose.orientation.w = 0
+        # TODO: check if object_name is there
+        if object_name.data in detected_objects_centroids:
+            pick_pose.position.x = np.asscalar(detected_objects_centroids[object_name.data][0])
+            pick_pose.position.y = np.asscalar(detected_objects_centroids[object_name.data][1])
+            pick_pose.position.z = np.asscalar(detected_objects_centroids[object_name.data][2])
+        else:
+            pick_pose.position.x = 0
+            pick_pose.position.y = 0
+            pick_pose.position.z = 0
+
+        # place_pose
+        place_pose = Pose()
+        place_pose.orientation.x = 0
+        place_pose.orientation.y = 0
+        place_pose.orientation.z = 0
+        place_pose.orientation.w = 0
+
+        place_pose.position.x = dropbox[i][0]
+        place_pose.position.y = dropbox[i][1]
+        place_pose.position.z = dropbox[i][2]
+
+        yaml_dict = make_yaml_dict(test_scene_num, arm_name, object_name, pick_pose, place_pose)
+        dict_list.append(yaml_dict)
+
+    # Output location of objects to YAML
+    yaml_filename = 'output_' + rospy.get_param('test_scene_num') + '.yaml'
+    send_to_yaml(yaml_filename, dict_list)
 
     # Suggested location for where to invoke your pr2_mover() function within pcl_callback()
     # Could add some logic to determine whether or not your object detections are robust
