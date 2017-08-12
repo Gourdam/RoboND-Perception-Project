@@ -176,7 +176,7 @@ def pcl_callback(pcl_msg):
         object_markers_pub.publish(make_label(label,label_pos, index))
 
         # Obtain centroid of detected objects
-        points_arr = pcl_cluser.to_array()
+        points_arr = pcl_cluster.to_array()
         if label in detected_objects_centroids:
             print "Found duplicated object! Overwriting object " + label
         detected_objects_centroids[label] = np.mean(points_arr, axis=0)[:3]
@@ -198,6 +198,7 @@ def pcl_callback(pcl_msg):
     dropbox = rospy.get_param('/dropbox')
 
     dict_list = []
+    print object_list_param
     for i in range(0, len(object_list_param)):
         # Populate various ROS messages
         # test_scene_num
@@ -205,12 +206,18 @@ def pcl_callback(pcl_msg):
         test_scene_num.data = int(rospy.get_param('test_scene_num'))
 
         # arm_name
+        if object_list_param[i]['group'] == 'red':
+            dropbox_index = 0
+        elif object_list_param[i]['group'] =='green':
+            dropbox_index = 1
+
         arm_name = String()
-        arm_name.data = dropbox[i]['name']
+        arm_name.data = dropbox[dropbox_index]['name']
 
         # object_name
         object_name = String()
         object_name.data = object_list_param[i]['name']
+
 
         # pick_pose
         pick_pose = Pose()
@@ -235,15 +242,15 @@ def pcl_callback(pcl_msg):
         place_pose.orientation.z = 0
         place_pose.orientation.w = 0
 
-        place_pose.position.x = dropbox[i][0]
-        place_pose.position.y = dropbox[i][1]
-        place_pose.position.z = dropbox[i][2]
+        place_pose.position.x = dropbox[dropbox_index]['position'][0]
+        place_pose.position.y = dropbox[dropbox_index]['position'][1]
+        place_pose.position.z = dropbox[dropbox_index]['position'][2]
 
         yaml_dict = make_yaml_dict(test_scene_num, arm_name, object_name, pick_pose, place_pose)
         dict_list.append(yaml_dict)
 
     # Output location of objects to YAML
-    yaml_filename = 'output_' + rospy.get_param('test_scene_num') + '.yaml'
+    yaml_filename = 'output_' + str(rospy.get_param('test_scene_num')) + '.yaml'
     send_to_yaml(yaml_filename, dict_list)
 
     # Suggested location for where to invoke your pr2_mover() function within pcl_callback()
