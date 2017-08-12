@@ -156,18 +156,33 @@ def pcl_callback(pcl_msg):
 # Exercise-3 TODOs:
 
     # Classify the clusters! (loop through each detected cluster one at a time)
-
+    for index, pts_list in enumerate(cluster_indices):
+        pcl_cluster = cloud_objects.extract(pts_list)
         # Grab the points for the cluster
-
+        ros_cluster = pcl_to_ros(pcl_cluster)
         # Compute the associated feature vector
-
+        color_hists = compute_color_histograms(ros_cluster)
+        normals = get_normals(ros_cluster)
+        normal_hists = compute_normal_histograms(normals)
+        feature = np.concatenate((color_hists, normal_hists))
         # Make the prediction
-
+        prediction = clf.predict(scaler.transform(feature.reshape(1, -1)))
+        label = encoder.inverse_transform(prediction)[0]
+        detected_objects_labels.append(label)
         # Publish a label into RViz
+        label_pos = list(white_cloud[pts_list[0]])
+        label_pos[2] += .4
+        object_markers_pub.publish(make_label(label,label_pos, index))
 
         # Add the detected object to the list of detected objects.
+        do = DetectedObject()
+        do.label = label
+        do.cloud = ros_cluster
+        detected_objects_list.append(do)
+    rospy.loginfo('Detected {} objects: {}'.format(len(detected_objects_labels), detected_objects_labels))
 
     # Publish the list of detected objects
+    detected_objects_pub.publish(detected_objects_list)
 
     # Suggested location for where to invoke your pr2_mover() function within pcl_callback()
     # Could add some logic to determine whether or not your object detections are robust
@@ -230,6 +245,21 @@ if __name__ == '__main__':
 
     # Initialize color_list
     get_color_list.color_list = []
+
+    object_markers_pub = rospy.Publisher("/object_markers", Marker, queue_size=1)
+    detected_objects_pub = rospy.Publisher("/detected_objects", DetectedObjectsArray, queue_size=1)
+
+    # Create Publishers
+    # TODO: here you need to create two publishers
+    # Call them object_markers_pub and detected_objects_pub
+    # Have them publish to "/object_markers" and "/detected_objects" with
+    # Message Types "Marker" and "DetectedObjectsArray" , respectively
+    # Load Model From disk
+    model = pickle.load(open('model.sav', 'rb'))
+    clf = model['classifier']
+    encoder = LabelEncoder()
+    encoder.classes_ = model['classes']
+    scaler = model['scaler']
 
     # TODO: Spin while node is not shutdown
     while not rospy.is_shutdown():
