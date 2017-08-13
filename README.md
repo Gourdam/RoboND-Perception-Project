@@ -1,6 +1,6 @@
-[predicted1]: ./pictures/predicted1.png
-[predicted2]: ./pictures/predicted2.png
-[predicted3]: ./pictures/predicted3.png
+[predicted1]: ./pictures/predicted1.PNG
+[predicted2]: ./pictures/predicted2.PNG
+[predicted3]: ./pictures/predicted3.PNG
 
 # Perception Pipeline
 ## Exercise 1
@@ -28,12 +28,18 @@ Using the data extracted from the perception pipeline, the clustered objects' ce
 YAML outputs can be found at `pr2_robot/scripts/output_*.yaml`.
 
 ![alt text][predicted1]
+
+
 `test1.world`
 3/3 objects were predicted
 
 ![alt text][predicted2]
+
+
 `test2.world`
 4/5 objects were predicted
 ![alt text][predicted3]
+
+
 `test3.world`
 8/8 objects were predicted
